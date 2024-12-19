@@ -1,0 +1,11 @@
+model\Task.class
+model\Feature.class
+model\Developer.class
+ui\TaskManagementUI.class
+factory\UserFactory.class
+model\Bug.class
+singleton\NotificationManager.class
+factory\TaskFactory.class
+model\User.class
+model\Admin.class
+singleton\TaskManager.class
