@@ -1,8 +1,11 @@
 package ui;
 
-import factory.TaskFactory;
 import model.Task;
+import observer.DynamicNotification;
 import singleton.TaskManager;
+import strategy.SearchByPriority;
+import strategy.SearchByTitle;
+import strategy.SearchStrategy;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -16,81 +19,100 @@ public class TaskManagementUI extends JFrame {
     private JTextField taskField;
     private JTextField searchField;
     private JLabel statsLabel;
-    private JLabel dynamicNotificationLabel;
+    private DynamicNotification dynamicNotification;
+    private SearchStrategy searchStrategy;
 
     public TaskManagementUI() {
         setTitle("Task Management System");
-        setSize(900, 700);
+        setSize(1000, 700);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // ** شريط الإشعارات الديناميكي **
-        dynamicNotificationLabel = new JLabel("Welcome!");
-        dynamicNotificationLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        dynamicNotificationLabel.setForeground(Color.WHITE);
-        dynamicNotificationLabel.setOpaque(true);
-        dynamicNotificationLabel.setBackground(Color.DARK_GRAY);
-        dynamicNotificationLabel.setVisible(true); // إظهار شريط الإشعارات دائمًا
-        add(dynamicNotificationLabel, BorderLayout.SOUTH);
+        // إعداد التصميم والخلفية
+        setLayout(new BorderLayout());
+        JPanel backgroundPanel = new JPanel(new BorderLayout());
+        backgroundPanel.setBackground(new Color(60, 63, 65)); // لون رمادي غامق
+        setContentPane(backgroundPanel);
 
-        // ** جدول عرض المهام **
+        // شريط الإشعارات الديناميكي
+        dynamicNotification = new DynamicNotification();
+        add(dynamicNotification, BorderLayout.SOUTH);
+
+        // ربط الإشعارات بـ TaskManager
+        TaskManager.getInstance().getNotifier().addObserver(dynamicNotification);
+
+        // ** إنشاء المكونات **
+
+        // لوحة الإدخال
+        JPanel inputPanel = new JPanel();
+        inputPanel.setLayout(new GridLayout(2, 1, 10, 10));
+        inputPanel.setBackground(new Color(43, 43, 43)); // لون رمادي أفتح
+        inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        // صف الإدخال
+        JPanel formPanel = new JPanel(new GridLayout(2, 4, 10, 10));
+        formPanel.setBackground(new Color(43, 43, 43));
+        taskField = new JTextField();
+        JComboBox<String> taskTypeCombo = new JComboBox<>(new String[]{"Bug", "Feature", "Improvement"});
+        JComboBox<String> priorityCombo = new JComboBox<>(new String[]{"Low", "Medium", "High"});
+        JComboBox<String> userCombo = new JComboBox<>(new String[]{"Admin", "Developer", "Tester"});
+
+        formPanel.add(createLabel("Task Title:"));
+        formPanel.add(taskField);
+        formPanel.add(createLabel("Task Type:"));
+        formPanel.add(taskTypeCombo);
+        formPanel.add(createLabel("Priority:"));
+        formPanel.add(priorityCombo);
+        formPanel.add(createLabel("Assigned To:"));
+        formPanel.add(userCombo);
+
+        inputPanel.add(formPanel);
+
+        // أزرار الإدخال
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        buttonPanel.setBackground(new Color(43, 43, 43));
+        JButton addButton = new JButton("Add Task");
+        JButton deleteButton = new JButton("Delete Task");
+        buttonPanel.add(addButton);
+        buttonPanel.add(deleteButton);
+
+        inputPanel.add(buttonPanel);
+
+        // لوحة البحث
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        searchPanel.setBackground(new Color(43, 43, 43));
+        searchField = new JTextField(20);
+        JButton searchByTitleButton = new JButton("Search by Title");
+        JButton searchByPriorityButton = new JButton("Search by Priority");
+        statsLabel = createLabel("Tasks Statistics: 0 Total Tasks");
+
+        searchPanel.add(createLabel("Search:"));
+        searchPanel.add(searchField);
+        searchPanel.add(searchByTitleButton);
+        searchPanel.add(searchByPriorityButton);
+        searchPanel.add(statsLabel);
+
+        // إضافة لوحة الإدخال والبحث في الأعلى
+        JPanel topPanel = new JPanel(new BorderLayout(10, 10));
+        topPanel.setBackground(new Color(43, 43, 43));
+        topPanel.add(inputPanel, BorderLayout.NORTH);
+        topPanel.add(searchPanel, BorderLayout.SOUTH);
+
+        add(topPanel, BorderLayout.NORTH);
+
+        // جدول عرض المهام
         String[] columnNames = {"Title", "Type", "Priority", "Assigned To"};
         tableModel = new DefaultTableModel(columnNames, 0);
         taskTable = new JTable(tableModel);
+        taskTable.setBackground(new Color(69, 73, 74));
+        taskTable.setForeground(Color.WHITE);
+        taskTable.setFillsViewportHeight(true);
         JScrollPane tableScrollPane = new JScrollPane(taskTable);
+        tableScrollPane.getViewport().setBackground(new Color(69, 73, 74));
         add(tableScrollPane, BorderLayout.CENTER);
-
-        // ** لوحة الإدخال **
-        JPanel inputPanel = new JPanel(new BorderLayout());
-
-        // لوحة لإدخال الحقول
-        JPanel formPanel = new JPanel(new FlowLayout());
-        formPanel.add(new JLabel("Task Title:"));
-        taskField = new JTextField(15);
-        formPanel.add(taskField);
-
-        formPanel.add(new JLabel("Task Type:"));
-        JComboBox<String> taskTypeCombo = new JComboBox<>(new String[]{"Bug", "Feature", "Improvement"});
-        formPanel.add(taskTypeCombo);
-
-        formPanel.add(new JLabel("Priority:"));
-        JComboBox<String> priorityCombo = new JComboBox<>(new String[]{"Low", "Medium", "High"});
-        formPanel.add(priorityCombo);
-
-        formPanel.add(new JLabel("Assigned To:"));
-        JComboBox<String> userCombo = new JComboBox<>(new String[]{"Admin", "Developer", "Tester"});
-        formPanel.add(userCombo);
-
-        inputPanel.add(formPanel, BorderLayout.NORTH);
-
-        // ** لوحة الأزرار **
-        JPanel buttonPanel = new JPanel(new FlowLayout());
-        JButton addButton = new JButton("Add Task");
-        buttonPanel.add(addButton);
-
-        JButton deleteButton = new JButton("Delete Task");
-        buttonPanel.add(deleteButton);
-
-        inputPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        // ** لوحة البحث والإحصائيات **
-        JPanel searchPanel = new JPanel(new FlowLayout());
-        searchField = new JTextField(15);
-        JButton searchButton = new JButton("Search");
-        statsLabel = new JLabel("Tasks Statistics: 0 Total Tasks");
-
-        searchPanel.add(new JLabel("Search:"));
-        searchPanel.add(searchField);
-        searchPanel.add(searchButton);
-        searchPanel.add(statsLabel);
-
-        inputPanel.add(searchPanel, BorderLayout.CENTER);
-
-        // إضافة لوحة الإدخال بأكملها
-        add(inputPanel, BorderLayout.NORTH);
 
         // ** الوظائف **
 
-        // إضافة مهمة جديدة
+        // وظيفة إضافة مهمة
         addButton.addActionListener((ActionEvent e) -> {
             String title = taskField.getText();
             if (title.isEmpty()) {
@@ -102,15 +124,14 @@ public class TaskManagementUI extends JFrame {
             String priority = (String) priorityCombo.getSelectedItem();
             String assignedTo = (String) userCombo.getSelectedItem();
 
-            Task task = TaskFactory.createTask(type, title, priority, assignedTo);
+            Task task = new Task(title, type, priority, assignedTo);
             TaskManager.getInstance().addTask(task);
-
-            showDynamicNotification("Task Added: " + title);
+            dynamicNotification.update("Task Added: " + task.getTitle());
             taskField.setText(""); // مسح حقل الإدخال
-            refreshTaskTable(); // تحديث الجدول
+            refreshTaskTable();
         });
 
-        // حذف مهمة
+        // وظيفة حذف مهمة
         deleteButton.addActionListener((ActionEvent e) -> {
             int selectedRow = taskTable.getSelectedRow();
             if (selectedRow == -1) {
@@ -120,69 +141,56 @@ public class TaskManagementUI extends JFrame {
 
             String title = (String) tableModel.getValueAt(selectedRow, 0);
             TaskManager.getInstance().deleteTask(title);
-
-            showDynamicNotification("Task Deleted: " + title);
-            refreshTaskTable(); // تحديث الجدول
+            dynamicNotification.update("Task Deleted: " + title);
+            refreshTaskTable();
         });
 
-        // البحث عن المهام
-        searchButton.addActionListener((ActionEvent e) -> {
-            String query = searchField.getText().toLowerCase();
-            filterTaskTable(query);
+        // وظيفة البحث
+        searchByTitleButton.addActionListener((ActionEvent e) -> {
+            searchStrategy = new SearchByTitle();
+            filterTaskTable(searchField.getText());
         });
 
-        // تحديث الجدول عند بدء التطبيق
+        searchByPriorityButton.addActionListener((ActionEvent e) -> {
+            searchStrategy = new SearchByPriority();
+            filterTaskTable(searchField.getText());
+        });
+
         refreshTaskTable();
     }
 
-    // عرض إشعار ديناميكي
-    private void showDynamicNotification(String message) {
-        dynamicNotificationLabel.setText(message);
-        dynamicNotificationLabel.setVisible(true);
-
-        Timer timer = new Timer(3000, e -> dynamicNotificationLabel.setVisible(false));
-        timer.setRepeats(false);
-        timer.start();
+    private JLabel createLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setForeground(Color.WHITE);
+        return label;
     }
 
-    // تحديث جدول المهام
+    private void filterTaskTable(String query) {
+        if (searchStrategy == null) return;
+
+        List<Task> filteredTasks = searchStrategy.search(TaskManager.getInstance().getTasks(), query);
+        updateTaskTable(filteredTasks);
+    }
+
     private void refreshTaskTable() {
-        tableModel.setRowCount(0);
         List<Task> tasks = TaskManager.getInstance().getTasks();
-
-        for (Task task : tasks) {
-            tableModel.addRow(new Object[]{task.getTitle(), task.getType(), task.getPriority(), task.getAssignedTo()});
-        }
-
+        updateTaskTable(tasks);
         statsLabel.setText("Tasks Statistics: " + tasks.size() + " Total Tasks");
     }
 
-    // تصفية جدول المهام
-    private void filterTaskTable(String query) {
+    private void updateTaskTable(List<Task> tasks) {
         tableModel.setRowCount(0);
-        List<Task> tasks = TaskManager.getInstance().getTasks();
-
         for (Task task : tasks) {
-            if (task.getTitle().toLowerCase().contains(query) ||
-                task.getType().toLowerCase().contains(query) ||
-                task.getPriority().toLowerCase().contains(query) ||
-                task.getAssignedTo().toLowerCase().contains(query)) {
-                tableModel.addRow(new Object[]{task.getTitle(), task.getType(), task.getPriority(), task.getAssignedTo()});
-            }
+            tableModel.addRow(new Object[]{
+                task.getTitle(),
+                task.getType(),
+                task.getPriority(),
+                task.getAssignedTo()
+            });
         }
     }
 
     public static void main(String[] args) {
-        try {
-            UIManager.setLookAndFeel(new com.formdev.flatlaf.FlatDarkLaf());
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
         SwingUtilities.invokeLater(() -> new TaskManagementUI().setVisible(true));
     }
 }
-
-
-
-

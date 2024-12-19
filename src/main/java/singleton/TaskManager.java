@@ -2,6 +2,7 @@ package singleton;
 
 import database.DatabaseManager;
 import model.Task;
+import observer.Notifier;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -9,9 +10,11 @@ import java.util.List;
 
 public class TaskManager {
     private static TaskManager instance;
+    private final Notifier notifier;
 
     private TaskManager() {
         DatabaseManager.initialize();
+        notifier = new Notifier(); // إشعارات
     }
 
     public static TaskManager getInstance() {
@@ -21,7 +24,6 @@ public class TaskManager {
         return instance;
     }
 
-    // إضافة مهمة
     public void addTask(Task task) {
         try (Connection conn = DatabaseManager.connect();
              PreparedStatement pstmt = conn.prepareStatement(
@@ -31,12 +33,13 @@ public class TaskManager {
             pstmt.setString(3, task.getPriority());
             pstmt.setString(4, task.getAssignedTo());
             pstmt.executeUpdate();
+
+            notifier.notifyObservers("Task Added: " + task.getTitle());
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    // استرجاع المهام
     public List<Task> getTasks() {
         List<Task> tasks = new ArrayList<>();
         try (Connection conn = DatabaseManager.connect();
@@ -56,14 +59,20 @@ public class TaskManager {
         return tasks;
     }
 
-    // حذف مهمة
     public void deleteTask(String title) {
         try (Connection conn = DatabaseManager.connect();
              PreparedStatement pstmt = conn.prepareStatement("DELETE FROM tasks WHERE title = ?")) {
             pstmt.setString(1, title);
             pstmt.executeUpdate();
+
+            notifier.notifyObservers("Task Deleted: " + title);
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
+    public Notifier getNotifier() {
+        return notifier;
+    }
 }
+
